@@ -13,6 +13,9 @@ swiftc SnapRatio.swift \
     -framework Cocoa \
     -framework Carbon
 
+mkdir -p "$BUNDLE/Contents/Resources"
+cp icons/AppIcon.icns "$BUNDLE/Contents/Resources/AppIcon.icns"
+
 cat > "$BUNDLE/Contents/Info.plist" << 'EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -32,6 +35,8 @@ cat > "$BUNDLE/Contents/Info.plist" << 'EOF'
     <true/>
     <key>NSScreenCaptureUsageDescription</key>
     <string>SnapRatio needs screen recording permission to capture screen content.</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>
