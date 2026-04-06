@@ -6,8 +6,30 @@ import Cocoa
 import Carbon.HIToolbox
 import Foundation
 
-let RATIO_W: CGFloat = 3
-let RATIO_H: CGFloat = 4
+// MARK: - 比例预设
+
+struct RatioPreset {
+    let name: String
+    let w: CGFloat   // 0 = 自由选择
+    let h: CGFloat
+}
+
+let ratioPresets: [RatioPreset] = [
+    RatioPreset(name: "3:4",    w: 3,  h: 4),
+    RatioPreset(name: "4:3",    w: 4,  h: 3),
+    RatioPreset(name: "1:1",    w: 1,  h: 1),
+    RatioPreset(name: "16:9",   w: 16, h: 9),
+    RatioPreset(name: "9:16",   w: 9,  h: 16),
+    RatioPreset(name: "自由选择", w: 0,  h: 0),
+]
+
+let kRatioKey = "selectedRatioIndex"
+
+func currentRatio() -> RatioPreset {
+    let idx = UserDefaults.standard.integer(forKey: kRatioKey)
+    guard idx >= 0 && idx < ratioPresets.count else { return ratioPresets[0] }
+    return ratioPresets[idx]
+}
 
 // MARK: - 全局快捷键回调（必须是全局函数，不能是闭包）
 
@@ -63,11 +85,15 @@ class SelectionView: NSView {
         let dx = current.x - start.x
         let dy = current.y - start.y
         let aw = abs(dx), ah = abs(dy)
+        let ratio = currentRatio()
         var w: CGFloat, h: CGFloat
-        if aw * RATIO_H > ah * RATIO_W {
-            w = aw; h = w * RATIO_H / RATIO_W
+        if ratio.w == 0 {
+            // 自由选择
+            w = aw; h = ah
+        } else if aw * ratio.h > ah * ratio.w {
+            w = aw; h = w * ratio.h / ratio.w
         } else {
-            h = ah; w = h * RATIO_W / RATIO_H
+            h = ah; w = h * ratio.w / ratio.h
         }
         let x = dx >= 0 ? start.x : start.x - w
         let y = dy >= 0 ? start.y : start.y - h
@@ -78,14 +104,16 @@ class SelectionView: NSView {
         NSColor(white: 0, alpha: 0.45).setFill()
         NSBezierPath.fill(bounds)
 
+        let ratio = currentRatio()
+        let hint = "拖拽选择区域（\(ratio.name)）  |  ESC 取消"
+
         guard let rect = selectionRect() else {
             let attrs: [NSAttributedString.Key: Any] = [
                 .foregroundColor: NSColor.white,
                 .font: NSFont.systemFont(ofSize: 16, weight: .medium)
             ]
-            let text = "拖拽选择区域（3:4 比例）  |  ESC 取消"
-            let size = text.size(withAttributes: attrs)
-            text.draw(at: NSPoint(x: (bounds.width - size.width) / 2, y: 20),
+            let size = hint.size(withAttributes: attrs)
+            hint.draw(at: NSPoint(x: (bounds.width - size.width) / 2, y: 20),
                       withAttributes: attrs)
             return
         }
@@ -107,6 +135,63 @@ class SelectionView: NSView {
         label.draw(at: NSPoint(x: rect.midX - labelSize.width / 2,
                                y: rect.midY - labelSize.height / 2),
                    withAttributes: attrs)
+    }
+}
+
+// MARK: - 设置窗口
+
+class SettingsWindowController: NSWindowController {
+    var popup: NSPopUpButton!
+
+    convenience init() {
+        let win = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 160),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        win.title = "截图设置"
+        win.center()
+        self.init(window: win)
+
+        let label = NSTextField(labelWithString: "截图比例")
+        label.frame = NSRect(x: 30, y: 100, width: 80, height: 20)
+        label.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+
+        popup = NSPopUpButton(frame: NSRect(x: 120, y: 96, width: 210, height: 28))
+        for preset in ratioPresets {
+            popup.addItem(withTitle: preset.name)
+        }
+        popup.selectItem(at: UserDefaults.standard.integer(forKey: kRatioKey))
+        popup.target = self
+        popup.action = #selector(ratioChanged(_:))
+
+        let separator = NSBox(frame: NSRect(x: 20, y: 72, width: 320, height: 1))
+        separator.boxType = .separator
+
+        let tip = NSTextField(labelWithString: "选择后立即生效并自动保存，重启 app 也会记住。")
+        tip.frame = NSRect(x: 30, y: 38, width: 300, height: 28)
+        tip.font = NSFont.systemFont(ofSize: 12)
+        tip.textColor = .secondaryLabelColor
+        tip.maximumNumberOfLines = 2
+
+        win.contentView?.addSubview(label)
+        win.contentView?.addSubview(popup)
+        win.contentView?.addSubview(separator)
+        win.contentView?.addSubview(tip)
+
+        // Cmd+W 关闭窗口
+        NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak win] event in
+            if event.modifierFlags.contains(.command) && event.charactersIgnoringModifiers == "w" {
+                win?.close()
+                return nil
+            }
+            return event
+        }
+    }
+
+    @objc func ratioChanged(_ sender: NSPopUpButton) {
+        UserDefaults.standard.set(sender.indexOfSelectedItem, forKey: kRatioKey)
     }
 }
 
@@ -148,8 +233,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var hotKeyRef: EventHotKeyRef?
     var overlayWindows: [NSWindow] = []
     var escMonitor: Any?
+    var settingsController: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 默认比例：3:4（仅首次启动时）
+        UserDefaults.standard.register(defaults: [kRatioKey: 0])
+
         // 菜单栏图标
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem?.button {
@@ -159,11 +248,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.addItem(withTitle: "截图 (⌘⇧S)", action: #selector(showOverlay), keyEquivalent: "")
             .target = self
+        menu.addItem(withTitle: "设置比例…", action: #selector(showSettings), keyEquivalent: ",")
+            .target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "退出", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         statusItem?.menu = menu
 
-        // 注册全局快捷键 Cmd+Shift+S（Carbon，无需 Accessibility 权限）
+        // 注册全局快捷键 Cmd+Shift+S
         var eventSpec = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
             eventKind: OSType(kEventHotKeyPressed)
@@ -188,6 +279,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
+    @objc func showSettings() {
+        if settingsController == nil {
+            settingsController = SettingsWindowController()
+        }
+        settingsController?.window?.center()
+        settingsController?.window?.level = .floating
+        settingsController?.showWindow(nil)
+        settingsController?.window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
     func dismissOverlay() {
         overlayWindows.forEach { $0.orderOut(nil) }
         overlayWindows.removeAll()
@@ -195,7 +297,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func showOverlay() {
-        // 清理上次残留窗口
         overlayWindows.forEach { $0.orderOut(nil) }
         overlayWindows.removeAll()
 
@@ -241,7 +342,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.activate(ignoringOtherApps: true)
 
-        // 监听 ESC 键（screenSaverWindowLevel 不走普通 keyDown，需要用事件监听器）
         escMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { self?.dismissOverlay(); return nil }
             return event
@@ -252,7 +352,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - 入口
 
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory)     // 不在 Dock 显示
+app.setActivationPolicy(.accessory)
 let delegate = AppDelegate()
 app.delegate = delegate
 app.run()

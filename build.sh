@@ -38,8 +38,8 @@ cat > "$BUNDLE/Contents/Info.plist" << 'EOF'
 </plist>
 EOF
 
-# Ad-hoc 签名，保证每次编译后权限标识稳定
-codesign --force --deep --sign - "$BUNDLE"
+# 用自签名证书签名，保证编译后权限不丢失
+codesign --force --deep --sign "ScreenshotToolDev" "$BUNDLE"
 
 echo "✅ 构建完成：$BUNDLE"
 echo ""
