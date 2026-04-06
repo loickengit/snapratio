@@ -8,7 +8,7 @@
 
 ---
 
-![设置窗口](settings.png)
+<img src="settings.png" width="400" />
 
 ## 为什么需要它
 
