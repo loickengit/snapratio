@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
 
-APP_NAME="ScreenshotTool"
+APP_NAME="SnapRatio"
 BUNDLE="${APP_NAME}.app"
 
 echo "🔨 编译中..."
 rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS"
 
-swiftc ScreenshotTool.swift \
+swiftc SnapRatio.swift \
     -o "$BUNDLE/Contents/MacOS/$APP_NAME" \
     -framework Cocoa \
     -framework Carbon
@@ -19,11 +19,11 @@ cat > "$BUNDLE/Contents/Info.plist" << 'EOF'
 <plist version="1.0">
 <dict>
     <key>CFBundleExecutable</key>
-    <string>ScreenshotTool</string>
+    <string>SnapRatio</string>
     <key>CFBundleIdentifier</key>
-    <string>com.user.screenshottool</string>
+    <string>com.snapratio.app</string>
     <key>CFBundleName</key>
-    <string>ScreenshotTool</string>
+    <string>SnapRatio</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
     <key>CFBundleShortVersionString</key>
@@ -31,7 +31,7 @@ cat > "$BUNDLE/Contents/Info.plist" << 'EOF'
     <key>LSUIElement</key>
     <true/>
     <key>NSScreenCaptureUsageDescription</key>
-    <string>需要屏幕录制权限来截取屏幕内容</string>
+    <string>SnapRatio needs screen recording permission to capture screen content.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
 </dict>
@@ -39,7 +39,7 @@ cat > "$BUNDLE/Contents/Info.plist" << 'EOF'
 EOF
 
 # 用自签名证书签名，保证编译后权限不丢失
-codesign --force --deep --sign "ScreenshotToolDev" "$BUNDLE"
+codesign --force --deep --sign "SnapRatioDev" "$BUNDLE"
 
 echo "✅ 构建完成：$BUNDLE"
 echo ""

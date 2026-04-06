@@ -1,4 +1,4 @@
-// ScreenshotTool - 菜单栏截图工具
+// SnapRatio - 固定比例截图工具
 // 构建: bash build.sh
 // 快捷键: Cmd+Shift+S
 
@@ -296,7 +296,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let m = escMonitor { NSEvent.removeMonitor(m); escMonitor = nil }
     }
 
+    func hasScreenRecordingPermission() -> Bool {
+        return CGPreflightScreenCaptureAccess()
+    }
+
     @objc func showOverlay() {
+        guard hasScreenRecordingPermission() else {
+            let alert = NSAlert()
+            alert.messageText = "需要屏幕录制权限"
+            alert.informativeText = "请前往「系统设置 → 隐私与安全性 → 屏幕录制」，开启 SnapRatio 的权限后重试。"
+            alert.addButton(withTitle: "打开系统设置")
+            alert.addButton(withTitle: "取消")
+            NSApp.activate(ignoringOtherApps: true)
+            if alert.runModal() == .alertFirstButtonReturn {
+                NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+            }
+            return
+        }
+
         overlayWindows.forEach { $0.orderOut(nil) }
         overlayWindows.removeAll()
 

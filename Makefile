@@ -1,4 +1,4 @@
-APP = ScreenshotTool
+APP = SnapRatio
 
 build:
 	@bash build.sh
