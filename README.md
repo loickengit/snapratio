@@ -23,7 +23,7 @@ Most screenshot tools let you select any region freely. That's fine until you ne
 
 ## Install
 
-Download the latest `.zip` from [Releases](../../releases), unzip, and move `SnapRatio.app` to `/Applications`.
+Download the latest `.zip` from [Releases](https://github.com/loickengit/snapratio/releases/latest), unzip, and move `SnapRatio.app` to `/Applications`.
 
 On first launch, macOS will ask for **Screen Recording** permission — this is required to capture screen content.
 
