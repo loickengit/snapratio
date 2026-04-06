@@ -2,3 +2,5 @@ SnapRatio.app/
 *.o
 *.d
 .DS_Store
+*.zip
+icons/SnapRatio.iconset/
